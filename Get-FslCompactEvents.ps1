@@ -8,7 +8,7 @@ Param (
     [Switch]$ExportData
 )
 BEGIN {
-    Write-Verbose ("FSLlogix VHD Disk Compaction Event Search | last {0} days | Output: {1} | Export Data: {2}" -f $SearchHistoryInDays,$Output,$ExportData)
+    Write-Verbose ("FSLlogix VHD Disk Compaction Event Search | last {0} days | Display Option: {1} | Export Data: {2}" -f $timeToSearch,$DisplayOption,$ExportData)
     $startTime = (Get-Date).AddDays(-$SearchHistoryInDays)
     $fileTimestamp = (Get-Date -Format yyyyMMdd_HHmmss)
     [System.Collections.Generic.List[System.Object]]$allEvents = @()
@@ -32,7 +32,7 @@ PROCESS {
             Else { Write-Verbose ("FOUND: {0} Events" -f $diskCompactionEvents.Count) }
             $countComputerNames++
         }
-        catch { Write-Error ("====>  FAILED: User may not have sufficient rights or is blocked by local firewall ({0})" -f $_.Exception.Message) }
+        catch { Write-Host ("====>  FAILED: Unable to query Get-WinEvents for {0} ({1})" -f $ComputerName,$_.Exception.Message) -BackgroundColor Red -ForegroundColor White }
     }
 }
 END {
