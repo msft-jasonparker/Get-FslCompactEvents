@@ -4,7 +4,7 @@ This script is an optional tool which enables IT administrators to collect the F
 
 More information can be found on the offical Microsoft Learn site for the [VHD Disk Compaction](https://learn.microsoft.com/fslogix/concepts-vhd-disk-compaction) page.
 
-## Simple PoweShell Snippet Version
+## Simple PowerShell Snippet Version
 
 ```powershell
 # Set startTime to number of days to search the event logs
