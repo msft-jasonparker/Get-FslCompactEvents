@@ -1,16 +1,38 @@
+<#
+.SYNOPSIS
+    Collects FSLogix VHD Disk Compaction event logs.
+.DESCRIPTION
+    This script takes a list of computer names and will attempt to collect the FSLogix VHD Disk Compaction event logs from those computers. The script will return the measured metrics from the disk compaction events and will optionally return all events related to disk compaction. Use cmdlets like Export-Csv or Out-File to save the results.
+.NOTES
+    The script will run with no input parameters and will collect information for the local computer over the last 30 days.
+.EXAMPLE
+    Get-FslCompactEvents.ps1
+    Will collect logs and return the disk compact metircs from the last 30 days on the local computer.
+.EXAMPLE
+    Get-FslCompactEvents.ps1 -ComputerNames "Computer1","Computer2" | Export-Csv -Path $ENV:TEMP\fsl_compact_metrics.csv -NoTypeInformation
+    Will collect logs from Computer1 and Computer2 from the last 30 days and save the data to a CSV file.
+.EXAMPLE
+    "Computer1","Computer2" | Get-FslCompactEvents.ps1 -Output AllEvents -Verbose
+    Takes the computer names from the pipeline, collects the ALL disk compaction events from the last 30 days and provides verbose output.
+#>
 [CmdletBinding()]
 Param (
-    [Parameter(ValueFromPipeline=$true)]
-    [string[]]$ComputerNames = $env:COMPUTERNAME,
+    # List of ComputerName(s) to collect event log data from (e.g., "Computer1", "Computer2"). Can be piped to the script or listed as part of the -ComputerNames parameter. Defaults to the local computer.
+    [Parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="Type the list of computers to collect events from ('Computer1','Computer2').")]
+    [System.String[]]$ComputerNames = $env:COMPUTERNAME,
+
+    # The number of days to search in the event logs for the FSLogix compaction events. Defaults to 30 days.
+    [Parameter(HelpMessage="Type the number of days to search for FSLogix compaction events.")]
     [System.Int32]$SearchHistoryInDays = 30,
+
+    # The type of data to return. Default value is 'Metrics', but will accept 'AllEvents' which displays all compaction events. The parameter ONLY ACCEPTS one (1) of two (2) values: AllEvents or Metrics.
+    [Parameter(HelpMessage="Type 'Metrics' or 'AllEvents' for the type of data to return.")]
     [ValidateSet("AllEvents","Metrics")]
-    [System.String]$Output = "Metrics",
-    [Switch]$ExportData
+    [System.String]$Output = "Metrics"
 )
 BEGIN {
-    Write-Verbose ("FSLlogix VHD Disk Compaction Event Search | last {0} days | Display Option: {1} | Export Data: {2}" -f $timeToSearch,$DisplayOption,$ExportData)
+    Write-Verbose ("FSLlogix VHD Disk Compaction Event Search | last {0} days | Output: {1}" -f $SearchHistoryInDays,$Output)
     $startTime = (Get-Date).AddDays(-$SearchHistoryInDays)
-    $fileTimestamp = (Get-Date -Format yyyyMMdd_HHmmss)
     [System.Collections.Generic.List[System.Object]]$allEvents = @()
     $countComputerNames = 0
 }
@@ -32,7 +54,7 @@ PROCESS {
             Else { Write-Verbose ("FOUND: {0} Events" -f $diskCompactionEvents.Count) }
             $countComputerNames++
         }
-        catch { Write-Host ("====>  FAILED: Unable to query Get-WinEvents for {0} ({1})" -f $ComputerName,$_.Exception.Message) -BackgroundColor Red -ForegroundColor White }
+        catch { Write-Error ("====>  FAILED: Unable to query Get-WinEvents for {0} ({1})" -f $ComputerName,$_.Exception.Message) }
     }
 }
 END {
@@ -51,13 +73,6 @@ END {
         @{l="SavedSpaceInGB";e={[math]::round($_.Properties[6].Value / 1024,2)}}
     
     If ($allEvents.Count -gt 0) {
-
-        If ($ExportData) {
-            Write-Host ("[CSV EXPORT]: {0}\fsl-compact-events-all-{1}.csv" -f $env:TEMP,$fileTimestamp) -ForegroundColor Green
-            $allEvents | Select-Object TimeCreated,LogName,LevelDisplayName,ID,MachineName,Message | Export-Csv -Path ("{0}\fsl-compact-events-all-{1}.csv" -f $env:TEMP,$fileTimestamp) -NoTypeInformation
-            Write-Host ("[CSV EXPORT]: {0}\fsl-compact-metrics-{1}.csv" -f $env:TEMP,$fileTimestamp) -ForegroundColor Green
-            $compactionMetrics | Export-Csv -Path ("{0}\fsl-compact-metrics-{1}.csv" -f $env:TEMP,$fileTimestamp) -NoTypeInformation
-        }
 
         Switch ($Output) {
             "AllEvents" { Return $allEvents | Select-Object TimeCreated,LogName,LevelDisplayName,ID,MachineName,Message }
